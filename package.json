@@ -1,6 +1,6 @@
 {
   "name": "vue",
-  "version": "2.7.16",
+  "version": "2.7.16-security.1",
   "packageManager": "pnpm@8.9.2",
   "description": "Reactive, component-oriented view layer for modern web interfaces.",
   "main": "dist/vue.runtime.common.js",
@@ -59,6 +59,7 @@
     "ts-check:test": "tsc -p test/tsconfig.json --noEmit",
     "bench:ssr": "npm run build:ssr && node benchmarks/ssr/renderToString.js && node benchmarks/ssr/renderToStream.js",
     "release": "node scripts/release.js",
+    "release:security": "node scripts/release-security.js",
     "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s"
   },
   "gitHooks": {

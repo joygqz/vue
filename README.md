@@ -1,122 +1,132 @@
-## Vue 2 has reached End of Life
+# Vue 2 — Self-maintained Security Fork
 
-**You are looking at the now inactive repository for Vue 2. The actively maintained repository for the latest version of Vue is [vuejs/core](https://github.com/vuejs/core).**
+> 这是基于 Vue 2.7.16（官方 EOL 最终版）的**自修复安全分支**，仅修复已披露的漏洞，**不引入功能改动**，不保证未来同步官方任何更新。
+> 上游已 EOL：<https://github.com/vuejs/vue> · 推荐新项目使用 [Vue 3](https://github.com/vuejs/core)。
 
-Vue has reached End of Life on December 31st, 2023. It no longer receives new features, updates, or fixes. However, it is still available on all existing distribution channels (CDNs, package managers, Github, etc).
+## 当前版本
 
-If you are starting a new project, please start with the latest version of Vue (3.x). We also strongly recommend current Vue 2 users to upgrade ([guide](https://v3-migration.vuejs.org/)), but we also acknowledge that not all users have the bandwidth or incentive to do so. If you have to stay on Vue 2 but also have compliance or security requirements about unmaintained software, check out [Vue 2 NES](https://www.herodevs.com/support/nes-vue?utm_source=vuejs-github&utm_medium=vue2-readme).
+`v2.7.16-security.1`
 
-<p align="center"><a href="https://vuejs.org" target="_blank" rel="noopener noreferrer"><img width="100" src="https://vuejs.org/images/logo.png" alt="Vue logo"></a></p>
+已修复的漏洞：
 
-<p align="center">
-  <a href="https://circleci.com/gh/vuejs/vue/tree/dev"><img src="https://img.shields.io/circleci/project/github/vuejs/vue/dev.svg?sanitize=true" alt="Build Status"></a>
-  <a href="https://codecov.io/github/vuejs/vue?branch=dev"><img src="https://img.shields.io/codecov/c/github/vuejs/vue/dev.svg?sanitize=true" alt="Coverage Status"></a>
-  <a href="https://npmcharts.com/compare/vue?minimal=true"><img src="https://img.shields.io/npm/dm/vue.svg?sanitize=true" alt="Downloads"></a>
-  <a href="https://www.npmjs.com/package/vue"><img src="https://img.shields.io/npm/v/vue.svg?sanitize=true" alt="Version"></a>
-  <a href="https://www.npmjs.com/package/vue"><img src="https://img.shields.io/npm/l/vue.svg?sanitize=true" alt="License"></a>
-  <a href="https://chat.vuejs.org/"><img src="https://img.shields.io/badge/chat-on%20discord-7289da.svg?sanitize=true" alt="Chat"></a>
-</p>
+| CVE              | 类型           | 涉及       | 修复点                                                             |
+| ---------------- | -------------- | ---------- | ------------------------------------------------------------------ |
+| CVE-2024-9506    | ReDoS          | 模板编译器 | `src/compiler/parser/html-parser.ts` 给 `reStackedTag` 加 `^` 锚点 |
+| CVE-2024-6783    | XSS / 原型污染 | codegen    | `class.ts` / `style.ts` / SSR `codegen.ts` 用 `hasOwn` 防御        |
+| 多项传递依赖 CVE | 多种           | 构建链     | `pnpm.overrides` + `pnpm patch`                                    |
 
-## Sponsors
+`pnpm audit` 结果：仅剩 1 个 low（`elliptic`，上游无修复，无法消除）。
 
-Vue.js is an MIT-licensed open source project with its ongoing development made possible entirely by the support of these awesome [backers](https://github.com/vuejs/core/blob/main/BACKERS.md). If you'd like to join them, please consider [ sponsor Vue's development](https://vuejs.org/sponsor/).
+## 业务项目接入（最简）
 
-<p align="center">
-  <h3 align="center">Special Sponsor</h3>
-</p>
+把 `package.json` `dependencies` 改成：
 
-<p align="center">
-  <a target="_blank" href="https://github.com/appwrite/appwrite">
-  <img alt="special sponsor appwrite" src="https://sponsors.vuejs.org/images/appwrite.svg" width="300">
-  </a>
-</p>
+```jsonc
+{
+  "dependencies": {
+    "vue": "git+https://github.com/joygqz/vue.git#v2.7.16-security.1",
+    "vue-template-compiler": "git+https://github.com/joygqz/vue.git#template-compiler-v2.7.16-security.1",
+    "vue-server-renderer": "git+https://github.com/joygqz/vue.git#server-renderer-v2.7.16-security.1",
+    "@vue/compiler-sfc": "git+https://github.com/joygqz/vue.git#compiler-sfc-v2.7.16-security.1"
+  }
+}
+```
 
-<p align="center">
-  <a target="_blank" href="https://vuejs.org/sponsor/">
-    <img alt="sponsors" src="https://sponsors.vuejs.org/sponsors.svg?v3">
-  </a>
-</p>
+只装用得到的即可。`npm` / `pnpm` / `yarn` 通用，**无需 patch 或 override**。
+
+验证：
+
+```sh
+node -p "require('vue/package.json').version"
+# 2.7.16-security.1
+```
+
+参考 `demo-vue/`（webpack + `vue-loader@15` 集成示例）。
+
+## 仓库分支 / Tag 一览
+
+| package                 | git tag                                | release 分支                                  |
+| ----------------------- | -------------------------------------- | --------------------------------------------- |
+| `vue`                   | `v2.7.16-security.1`                   | `release/2.7.16-security.1`                   |
+| `vue-template-compiler` | `template-compiler-v2.7.16-security.1` | `release/template-compiler-2.7.16-security.1` |
+| `vue-server-renderer`   | `server-renderer-v2.7.16-security.1`   | `release/server-renderer-2.7.16-security.1`   |
+| `@vue/compiler-sfc`     | `compiler-sfc-v2.7.16-security.1`      | `release/compiler-sfc-2.7.16-security.1`      |
+
+`main` 分支只用于源码开发；`release/*` 分支由 `pnpm run release:security` 生成，包含完整构建产物供业务方 git 直接安装。
 
 ---
 
-## Introduction
+## 开发 / 构建 / 发布流程
 
-Vue (pronounced `/vjuː/`, like view) is a **progressive framework** for building user interfaces. It is designed from the ground up to be incrementally adoptable, and can easily scale between a library and a framework depending on different use cases. It consists of an approachable core library that focuses on the view layer only, and an ecosystem of supporting libraries that helps you tackle complexity in large Single-Page Applications.
+### 1. 准备开发环境
 
-#### Browser Compatibility
+```sh
+pnpm install                 # 含 pnpm.overrides + patchedDependencies
+```
 
-Vue.js supports all browsers that are [ES5-compliant](https://compat-table.github.io/compat-table/es5/) (IE8 and below are not supported).
+### 2. 改源码
 
-## Ecosystem
+漏洞修复或其他改动均在 `main` 分支进行：
 
-| Project               | Status                                                       | Description                                             |
-| --------------------- | ------------------------------------------------------------ | ------------------------------------------------------- |
-| [vue-router]          | [![vue-router-status]][vue-router-package]                   | Single-page application routing                         |
-| [vuex]                | [![vuex-status]][vuex-package]                               | Large-scale state management                            |
-| [vue-cli]             | [![vue-cli-status]][vue-cli-package]                         | Project scaffolding                                     |
-| [vue-loader]          | [![vue-loader-status]][vue-loader-package]                   | Single File Component (`*.vue` file) loader for webpack |
-| [vue-server-renderer] | [![vue-server-renderer-status]][vue-server-renderer-package] | Server-side rendering support                           |
-| [vue-class-component] | [![vue-class-component-status]][vue-class-component-package] | TypeScript decorator for a class-based API              |
-| [vue-rx]              | [![vue-rx-status]][vue-rx-package]                           | RxJS integration                                        |
-| [vue-devtools]        | [![vue-devtools-status]][vue-devtools-package]               | Browser DevTools extension                              |
+```sh
+git checkout main
+# 编辑 src/** 或 packages/**
+```
 
-[vue-router]: https://github.com/vuejs/vue-router
-[vuex]: https://github.com/vuejs/vuex
-[vue-cli]: https://github.com/vuejs/vue-cli
-[vue-loader]: https://github.com/vuejs/vue-loader
-[vue-server-renderer]: https://github.com/vuejs/vue/tree/dev/packages/vue-server-renderer
-[vue-class-component]: https://github.com/vuejs/vue-class-component
-[vue-rx]: https://github.com/vuejs/vue-rx
-[vue-devtools]: https://github.com/vuejs/vue-devtools
-[vue-router-status]: https://img.shields.io/npm/v/vue-router.svg
-[vuex-status]: https://img.shields.io/npm/v/vuex.svg
-[vue-cli-status]: https://img.shields.io/npm/v/@vue/cli.svg
-[vue-loader-status]: https://img.shields.io/npm/v/vue-loader.svg
-[vue-server-renderer-status]: https://img.shields.io/npm/v/vue-server-renderer.svg
-[vue-class-component-status]: https://img.shields.io/npm/v/vue-class-component.svg
-[vue-rx-status]: https://img.shields.io/npm/v/vue-rx.svg
-[vue-devtools-status]: https://img.shields.io/chrome-web-store/v/nhdogjmejiglipccpnnnanhbledajbpd.svg
-[vue-router-package]: https://npmjs.com/package/vue-router
-[vuex-package]: https://npmjs.com/package/vuex
-[vue-cli-package]: https://npmjs.com/package/@vue/cli
-[vue-loader-package]: https://npmjs.com/package/vue-loader
-[vue-server-renderer-package]: https://npmjs.com/package/vue-server-renderer
-[vue-class-component-package]: https://npmjs.com/package/vue-class-component
-[vue-rx-package]: https://npmjs.com/package/vue-rx
-[vue-devtools-package]: https://chrome.google.com/webstore/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd
+### 3. 构建 + 测试
 
-## Documentation
+```sh
+pnpm run build               # 主包 + 子包产物
+pnpm run build:types         # .d.ts
+pnpm run test:unit
+pnpm run test:ssr
+pnpm run test:sfc
+pnpm audit                   # 预期：仅剩 1 个 low（elliptic 无上游修复）
+```
 
-To check out [live examples](https://v2.vuejs.org/v2/examples/) and docs, visit [vuejs.org](https://v2.vuejs.org).
+### 4. 提交源码改动
 
-## Questions
+```sh
+git add -A && git commit -m "fix: <CVE-编号或简述>" && git push
+```
 
-For questions and support please use [the official forum](https://forum.vuejs.org) or [community chat](https://chat.vuejs.org/). The issue list of this repo is **exclusively** for bug reports and feature requests.
+### 5. 跑发布脚本
 
-## Issues
+```sh
+pnpm run release:security
+# 等价于：node scripts/release-security.js
+```
 
-Please make sure to read the [Issue Reporting Checklist](https://github.com/vuejs/vue/blob/dev/.github/CONTRIBUTING.md#issue-reporting-guidelines) before opening an issue. Issues not conforming to the guidelines may be closed immediately.
+脚本自动：算 N → 构建 → 主包发 `release/2.7.16-security.<N>` + tag → 3 个子包各发一个孤儿分支 + tag → push → 打印本轮接入示例。
 
-## Changelog
+常用选项：
 
-Detailed changes for each release are documented in the [release notes](https://github.com/vuejs/vue/releases).
+| 选项                | 说明                                  |
+| ------------------- | ------------------------------------- |
+| `--n 5`             | 手动指定本轮 N（默认远端最大值 +1）   |
+| `--no-push`         | 仅本地建分支/tag，最后打印 push 命令  |
+| `--no-build`        | 跳过构建（产物已就绪）                |
+| `--clean --n 2`     | 清理 N=2 的本地残留 tag/分支/worktree |
+| `--remote upstream` | 远端名（默认 `origin`）               |
 
-## Stay In Touch
+跑 `node scripts/release-security.js --help` 看完整说明。中途失败时脚本会提示残留 ref 的自查命令。
 
-- [Twitter](https://twitter.com/vuejs)
-- [Blog](https://medium.com/the-vue-point)
-- [Job Board](https://vuejobs.com/?ref=vuejs)
+### 6. 通知业务项目
 
-## Contribution
+把新 tag 告知依赖方，业务项目把 `git+...#v2.7.16-security.<旧 N>` 改成新 tag 后 `pnpm install` 即可。
 
-Please make sure to read the [Contributing Guide](https://github.com/vuejs/vue/blob/dev/.github/CONTRIBUTING.md) before making a pull request. If you have a Vue-related project/component/tool, add it with a pull request to [this curated list](https://github.com/vuejs/awesome-vue)!
+---
 
-Thank you to all the people who already contributed to Vue!
+## 仓库结构
 
-<a href="https://github.com/vuejs/vue/graphs/contributors"><img src="https://opencollective.com/vuejs/contributors.svg?width=890" /></a>
+- `src/` — Vue 运行时与编译器源码（漏洞修复在此）
+- `packages/` — 子包源码（`server-renderer` / `compiler-sfc` / `template-compiler`）
+- `scripts/` — 构建配置与发布脚本（核心：`release-security.js`）
+- `patches/` — `pnpm patch` 文件
+- `demo-vue/` — webpack 集成 demo（验证可安装）
 
 ## License
 
-[MIT](https://opensource.org/licenses/MIT)
+MIT（沿用原作者 Yuxi (Evan) You 的授权）
 
-Copyright (c) 2013-present, Yuxi (Evan) You
+<p align="center"><a href="https://vuejs.org" target="_blank" rel="noopener noreferrer"><img width="100" src="https://vuejs.org/images/logo.png" alt="Vue logo"></a></p>

