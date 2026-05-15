@@ -1,5 +1,6 @@
+import { baseWarn, getAndRemoveAttr, getBindingAttr } from 'compiler/helpers'
 import { parseText } from 'compiler/parser/text-parser'
-import { getAndRemoveAttr, getBindingAttr, baseWarn } from 'compiler/helpers'
+import { hasOwn } from 'shared/util'
 import { ASTElement, CompilerOptions, ModuleOptions } from 'types/compiler'
 
 function transformNode(el: ASTElement, options: CompilerOptions) {
@@ -28,10 +29,11 @@ function transformNode(el: ASTElement, options: CompilerOptions) {
 
 function genData(el: ASTElement): string {
   let data = ''
-  if (el.staticClass) {
+  // guard against prototype pollution (CVE-2024-6783)
+  if (hasOwn(el, 'staticClass') && el.staticClass) {
     data += `staticClass:${el.staticClass},`
   }
-  if (el.classBinding) {
+  if (hasOwn(el, 'classBinding') && el.classBinding) {
     data += `class:${el.classBinding},`
   }
   return data

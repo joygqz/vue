@@ -3,27 +3,28 @@
 // a node is not optimizable it simply falls back to the default codegen.
 
 import {
-  genIf,
-  genFor,
-  genData,
-  genText,
-  genElement,
+  CodegenState,
   genChildren,
-  CodegenState
+  genData,
+  genElement,
+  genFor,
+  genIf,
+  genText
 } from 'compiler/codegen/index'
 
 import {
+  applyModelTransform,
   genAttrSegments,
-  genDOMPropSegments,
   genClassSegments,
-  genStyleSegments,
-  applyModelTransform
+  genDOMPropSegments,
+  genStyleSegments
 } from './modules'
 
+import type { CodegenResult } from 'compiler/codegen/index'
+import { hasOwn } from 'shared/util'
+import { ASTElement, ASTNode, CompilerOptions } from 'types/compiler'
 import { escape } from '../util'
 import { optimizability } from './optimizer'
-import type { CodegenResult } from 'compiler/codegen/index'
-import { ASTElement, ASTNode, CompilerOptions } from 'types/compiler'
 
 export type StringSegment = {
   type: number
@@ -169,14 +170,19 @@ function elementToOpenTagSegments(el, state): Array<StringSegment> {
     segments.push({ type: EXPRESSION, value: `_ssrDOMProps(${binding})` })
   }
   // class
-  if (el.staticClass || el.classBinding) {
+  // guard against prototype pollution (CVE-2024-6783)
+  const hasStaticClass = hasOwn(el, 'staticClass') && el.staticClass
+  const hasClassBinding = hasOwn(el, 'classBinding') && el.classBinding
+  if (hasStaticClass || hasClassBinding) {
     segments.push.apply(
       segments,
       genClassSegments(el.staticClass, el.classBinding)
     )
   }
   // style & v-show
-  if (el.staticStyle || el.styleBinding || el.attrsMap['v-show']) {
+  const hasStaticStyle = hasOwn(el, 'staticStyle') && el.staticStyle
+  const hasStyleBinding = hasOwn(el, 'styleBinding') && el.styleBinding
+  if (hasStaticStyle || hasStyleBinding || el.attrsMap['v-show']) {
     segments.push.apply(
       segments,
       genStyleSegments(

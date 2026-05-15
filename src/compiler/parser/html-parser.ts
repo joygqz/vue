@@ -9,10 +9,10 @@
  * http://erik.eae.net/simplehtmlparser/simplehtmlparser.js
  */
 
-import { makeMap, no } from 'shared/util'
-import { isNonPhrasingTag } from 'web/compiler/util'
 import { unicodeRegExp } from 'core/util/lang'
+import { makeMap, no } from 'shared/util'
 import { ASTAttr, CompilerOptions } from 'types/compiler'
+import { isNonPhrasingTag } from 'web/compiler/util'
 
 // Regular Expressions for parsing tags and attributes
 const attribute =
@@ -170,7 +170,9 @@ export function parseHTML(html, options: HTMLParserOptions) {
       const reStackedTag =
         reCache[stackedTag] ||
         (reCache[stackedTag] = new RegExp(
-          '([\\s\\S]*?)(</' + stackedTag + '[^>]*>)',
+          // anchor at start to avoid catastrophic backtracking when the
+          // closing tag is absent or mismatched (CVE-2024-9506)
+          '^([\\s\\S]*?)(</' + stackedTag + '[^>]*>)',
           'i'
         ))
       const rest = html.replace(reStackedTag, function (all, text, endTag) {
