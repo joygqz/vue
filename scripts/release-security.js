@@ -392,20 +392,30 @@ function printSummary(newVer) {
   console.log()
   ok(`全部发布完成：${newVer}`)
   console.log()
-  console.log('依赖方接入示例：')
+  const refs = {
+    vue: `git+${REPO_URL}#${mainTag}`,
+    'vue-template-compiler': `git+${REPO_URL}#template-compiler-v${newVer}`,
+    'vue-server-renderer': `git+${REPO_URL}#server-renderer-v${newVer}`,
+    '@vue/compiler-sfc': `git+${REPO_URL}#compiler-sfc-v${newVer}`
+  }
+
+  console.log('依赖方接入示例（只保留用得到的几项即可）：')
+  console.log()
+  console.log('1) dependencies — 替换直接依赖：')
+  console.log(JSON.stringify({ dependencies: refs }, null, 2))
+  console.log()
   console.log(
-    JSON.stringify(
-      {
-        dependencies: {
-          vue: `git+${REPO_URL}#${mainTag}`,
-          'vue-template-compiler': `git+${REPO_URL}#template-compiler-v${newVer}`,
-          'vue-server-renderer': `git+${REPO_URL}#server-renderer-v${newVer}`,
-          '@vue/compiler-sfc': `git+${REPO_URL}#compiler-sfc-v${newVer}`
-        }
-      },
-      null,
-      2
-    )
+    `2) overrides / resolutions — 强制 dedup（几乎必须）：版本号 ${newVer} 为 prerelease，`
+  )
+  console.log(
+    '   不匹配间接依赖的 ^2.x 范围，不加 override 会另装一份未打补丁的 vue。'
+  )
+  console.log('   pnpm:  ' + JSON.stringify({ pnpm: { overrides: refs } }))
+  console.log('   npm:   ' + JSON.stringify({ overrides: refs }))
+  console.log('   yarn:  ' + JSON.stringify({ resolutions: refs }))
+  console.log()
+  console.log(
+    '3) 重装锁文件后用 `pnpm why vue` 确认全树只有一份补丁版（详见 README「业务项目接入」）。'
   )
 
   if (!DO_PUSH) {

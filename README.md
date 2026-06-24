@@ -17,9 +17,11 @@
 
 `pnpm audit` 结果：仅剩 1 个 low（`elliptic`，上游无修复，无法消除）。
 
-## 业务项目接入（最简）
+## 业务项目接入
 
-把 `package.json` `dependencies` 改成：
+### 第 1 步：替换直接依赖
+
+把 `package.json` `dependencies` 里用到的几项改成 git tag（只装用得到的即可）：
 
 ```jsonc
 {
@@ -32,13 +34,67 @@
 }
 ```
 
-只装用得到的即可。`npm` / `pnpm` / `yarn` 通用，**无需 patch 或 override**。
+### 第 2 步：强制 dedup（**几乎所有项目都需要**）
 
-验证：
+> ⚠️ 本分支版本号是 **prerelease**（`2.7.16-security.1`）。按 semver 规则，prerelease **不会匹配**普通范围（`^2.7.16`、`^2.7.0`、`>=2.5.0` 全部不命中）。
+> 因此，凡是**间接依赖** vue 的包（UI 组件库、被工具链拉取的 `vue-template-compiler` / `vue-server-renderer`、把 `vue` 写进 `dependencies` 的库），其范围匹配不到本补丁版，包管理器会**从 registry 另装一份未打补丁的 vue**——导致双份 Vue 实例（响应式 / `instanceof` 失效）且漏洞依然存在。
+
+除非你的项目**完全没有任何间接 vue 依赖**（极少见），否则必须用 `overrides` / `resolutions` 把所有 vue 引用强制指向本补丁版：
+
+**npm / pnpm**（`package.json` 顶层）：
+
+```jsonc
+{
+  // pnpm
+  "pnpm": {
+    "overrides": {
+      "vue": "git+https://github.com/joygqz/vue.git#v2.7.16-security.1",
+      "vue-template-compiler": "git+https://github.com/joygqz/vue.git#template-compiler-v2.7.16-security.1",
+      "vue-server-renderer": "git+https://github.com/joygqz/vue.git#server-renderer-v2.7.16-security.1",
+      "@vue/compiler-sfc": "git+https://github.com/joygqz/vue.git#compiler-sfc-v2.7.16-security.1"
+    }
+  },
+  // npm（顶层同级，与 pnpm 二选一按所用包管理器）
+  "overrides": {
+    "vue": "git+https://github.com/joygqz/vue.git#v2.7.16-security.1",
+    "vue-template-compiler": "git+https://github.com/joygqz/vue.git#template-compiler-v2.7.16-security.1",
+    "vue-server-renderer": "git+https://github.com/joygqz/vue.git#server-renderer-v2.7.16-security.1",
+    "@vue/compiler-sfc": "git+https://github.com/joygqz/vue.git#compiler-sfc-v2.7.16-security.1"
+  }
+}
+```
+
+**yarn**（`package.json` 顶层）：
+
+```jsonc
+{
+  "resolutions": {
+    "vue": "git+https://github.com/joygqz/vue.git#v2.7.16-security.1",
+    "vue-template-compiler": "git+https://github.com/joygqz/vue.git#template-compiler-v2.7.16-security.1",
+    "vue-server-renderer": "git+https://github.com/joygqz/vue.git#server-renderer-v2.7.16-security.1",
+    "@vue/compiler-sfc": "git+https://github.com/joygqz/vue.git#compiler-sfc-v2.7.16-security.1"
+  }
+}
+```
+
+override 列表同样只保留用得到的几项即可。
+
+### 第 3 步：安装并验证
+
+重装锁文件以确保 dedup 生效：
+
+```sh
+rm -rf node_modules pnpm-lock.yaml   # 或 package-lock.json / yarn.lock
+pnpm install                         # npm install / yarn install
+```
+
+验证版本号，并确认全树只有一份 vue：
 
 ```sh
 node -p "require('vue/package.json').version"
 # 2.7.16-security.1
+
+pnpm why vue        # npm ls vue / yarn why vue —— 应只出现 git 补丁版，无 registry 副本
 ```
 
 参考 `demo-vue/`（webpack + `vue-loader@15` 集成示例）。
@@ -113,7 +169,7 @@ pnpm run release:security
 
 ### 6. 通知业务项目
 
-把新 tag 告知依赖方，业务项目把 `git+...#v2.7.16-security.<旧 N>` 改成新 tag 后 `pnpm install` 即可。
+把新 tag 告知依赖方。业务项目需把 `dependencies` **以及 `overrides` / `resolutions`** 里的 `git+...#...security.<旧 N>` 一并改成新 tag，再重装锁文件（详见上文「业务项目接入」三步）。
 
 ---
 
