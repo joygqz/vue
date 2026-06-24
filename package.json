@@ -88,7 +88,7 @@
   },
   "homepage": "https://github.com/vuejs/vue#readme",
   "dependencies": {
-    "@vue/compiler-sfc": "workspace:*",
+    "@vue/compiler-sfc": "git+https://github.com/joygqz/vue.git#compiler-sfc-v2.7.16-security.1",
     "csstype": "^3.1.0"
   },
   "devDependencies": {
