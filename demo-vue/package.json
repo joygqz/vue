@@ -7,7 +7,8 @@
   "scripts": {
     "build": "webpack --mode production",
     "dev": "webpack serve --mode development",
-    "verify": "node verify.js"
+    "verify": "node verify.js",
+    "verify:indirect": "node verify-indirect.js"
   },
   "dependencies": {
     "vue": "git+https://github.com/joygqz/vue.git#v2.7.16-security.1"
@@ -21,5 +22,11 @@
     "html-webpack-plugin": "^5.6.0",
     "css-loader": "^6.11.0",
     "vue-style-loader": "^4.1.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "vue": "git+https://github.com/joygqz/vue.git#v2.7.16-security.1",
+      "vue-template-compiler": "git+https://github.com/joygqz/vue.git#template-compiler-v2.7.16-security.1"
+    }
   }
 }
